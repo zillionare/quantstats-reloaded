@@ -200,7 +200,10 @@ def _prepare_prices(data, base=1.0):
     if isinstance(data, (_pd.DataFrame, _pd.Series)):
         data = data.fillna(0).replace([_np.inf, -_np.inf], float("NaN"))
 
-    data = data.tz_localize(None)
+    # 只有pandas对象且索引是DatetimeIndex或PeriodIndex时才调用tz_localize方法
+    if isinstance(data, (_pd.DataFrame, _pd.Series)):
+        if isinstance(data.index, (_pd.DatetimeIndex, _pd.PeriodIndex)):
+            data = data.tz_localize(None)
     return data
 
 
@@ -212,14 +215,24 @@ def _prepare_returns(data, rf=0.0, nperiods=None):
         for col in data.columns:
             if data[col].dropna().min() >= 0 and data[col].dropna().max() > 1:
                 data[col] = data[col].pct_change()
-    elif data.min() >= 0 and data.max() > 1:
-        data = data.pct_change()
+    elif isinstance(data, _pd.Series):
+        if data.min() >= 0 and data.max() > 1:
+            data = data.pct_change()
+    elif isinstance(data, _np.ndarray):
+        if data.min() >= 0 and data.max() > 1:
+            # 对NumPy数组计算百分比变化
+            data = _np.diff(data) / data[:-1]
+            # 在开头添加一个0，保持数组长度一致
+            data = _np.insert(data, 0, 0)
 
     # cleanup data
-    data = data.replace([_np.inf, -_np.inf], float("NaN"))
-
     if isinstance(data, (_pd.DataFrame, _pd.Series)):
+        data = data.replace([_np.inf, -_np.inf], float("NaN"))
         data = data.fillna(0).replace([_np.inf, -_np.inf], float("NaN"))
+    elif isinstance(data, _np.ndarray):
+        # 处理numpy数组
+        data = _np.where(_np.isinf(data), _np.nan, data)
+        data = _np.nan_to_num(data, nan=0.0)
     unnecessary_function_calls = [
         "_prepare_benchmark",
         "cagr",
@@ -229,9 +242,14 @@ def _prepare_returns(data, rf=0.0, nperiods=None):
 
     if function not in unnecessary_function_calls:
         if rf > 0:
-            return to_excess_returns(data, rf, nperiods)
+            # 只对pandas对象应用to_excess_returns
+            if isinstance(data, (_pd.DataFrame, _pd.Series)):
+                return to_excess_returns(data, rf, nperiods)
 
-    data = data.tz_localize(None)
+    # 只有pandas对象才调用tz_localize方法
+    if isinstance(data, (_pd.DataFrame, _pd.Series)):
+        if isinstance(data.index, (_pd.DatetimeIndex, _pd.PeriodIndex)):
+            data = data.tz_localize(None)
     return data
 
 
@@ -267,6 +285,12 @@ def _prepare_benchmark(benchmark=None, period="max", rf=0.0, prepare_returns=Tru
 
     elif isinstance(benchmark, _pd.DataFrame):
         benchmark = benchmark[benchmark.columns[0]].copy()
+        
+    # 确保benchmark有一个日期索引
+    if not isinstance(benchmark.index, _pd.DatetimeIndex):
+        # 创建一个日期索引
+        date_index = _pd.date_range(start='2000-01-01', periods=len(benchmark))
+        benchmark = _pd.Series(benchmark.values, index=date_index, name=benchmark.name)
 
     if isinstance(period, _pd.DatetimeIndex) and set(period) != set(benchmark.index):
 
@@ -290,6 +314,10 @@ def _prepare_benchmark(benchmark=None, period="max", rf=0.0, prepare_returns=Tru
 
 def _round_to_closest(val, res, decimals=None):
     """Round to closest resolution"""
+    # 处理无穷大和NaN值
+    if _np.isinf(val) or _np.isnan(val):
+        return val
+    
     if decimals is None and "." in str(res):
         decimals = len(str(res).split(".")[1])
     return round(round(val / res) * res, decimals)
@@ -307,7 +335,7 @@ def _in_notebook(matplotlib_inline=False):
         if shell == "ZMQInteractiveShell":
             # Jupyter notebook or qtconsole
             if matplotlib_inline:
-                get_ipython().magic("matplotlib inline")
+                get_ipython().run_line_magic("matplotlib", "inline")
             return True
         if shell == "TerminalInteractiveShell":
             # Terminal running IPython
@@ -413,7 +441,29 @@ def make_index(
 def make_portfolio(returns, start_balance=1e5, mode="comp", round_to=None):
     """Calculates compounded value of portfolio"""
     returns = _prepare_returns(returns)
-
+    
+    # 处理NumPy数组
+    if isinstance(returns, _np.ndarray):
+        if mode.lower() in ["cumsum", "sum"]:
+            p1 = start_balance + start_balance * _np.cumsum(returns)
+        elif mode.lower() in ["compsum", "comp"]:
+            # 对NumPy数组实现to_prices的等效功能
+            p1 = start_balance * (1 + returns).cumprod()
+        else:
+            # 固定金额每天
+            shifted_returns = _np.insert(returns[:-1], 0, 0)
+            comp_rev = (start_balance + start_balance * shifted_returns) * returns
+            p1 = start_balance + _np.cumsum(comp_rev)
+        
+        # 为NumPy数组创建一个包含起始余额的新数组
+        portfolio = _np.insert(p1, 0, start_balance)
+        
+        if round_to:
+            portfolio = _np.round(portfolio, round_to)
+        
+        return portfolio
+    
+    # 处理pandas对象
     if mode.lower() in ["cumsum", "sum"]:
         p1 = start_balance + start_balance * returns.cumsum()
     elif mode.lower() in ["compsum", "comp"]:
@@ -425,8 +475,24 @@ def make_portfolio(returns, start_balance=1e5, mode="comp", round_to=None):
         ) * returns
         p1 = start_balance + comp_rev.cumsum()
 
-    # add day before with starting balance
-    p0 = _pd.Series(data=start_balance, index=p1.index + _pd.Timedelta(days=-1))[:1]
+    # 检查索引类型并添加前一天的起始余额
+    if isinstance(p1.index, _pd.DatetimeIndex):
+        # 如果是日期索引，使用Timedelta
+        p0 = _pd.Series(data=start_balance, index=p1.index + _pd.Timedelta(days=-1))[:1]
+    else:
+        # 如果不是日期索引，创建一个新的索引
+        # 获取当前索引的类型和值
+        if len(p1.index) > 0:
+            # 如果索引是数字类型，减1
+            if isinstance(p1.index[0], (int, float)):
+                new_idx = [p1.index[0] - 1]
+            else:
+                # 否则使用一个字符串索引
+                new_idx = ['start']
+            p0 = _pd.Series(data=start_balance, index=new_idx)
+        else:
+            # 如果索引为空，使用默认索引
+            p0 = _pd.Series(data=start_balance, index=[0])
 
     portfolio = _pd.concat([p0, p1])
 

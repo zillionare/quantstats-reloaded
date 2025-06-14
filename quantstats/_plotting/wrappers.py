@@ -59,24 +59,26 @@ def to_plotly(fig):
         return plotly.plotly.iplot(fig, filename="quantstats-plot", overwrite=True)
 
 
-def snapshot(
-    returns,
-    grayscale=False,
-    figsize=(10, 8),
-    title="Portfolio Summary",
-    fontname="Arial",
-    lw=1.5,
-    mode="comp",
-    subtitle=True,
-    savefig=None,
-    show=True,
-    log_scale=False,
-    **kwargs,
-):
+def snapshot(returns, grayscale=False, figsize=None, title="Portfolio Performance",
+           fontname="Arial", lw=1.5, mode="comp", subtitle=True,
+           savefig=None, show=True, log_scale=False, **kwargs):
 
-    strategy_colname = kwargs.get("strategy_col", "Strategy")
-
+    strategy_colname = "Strategy"
     multi_column = False
+    is_numpy_array = isinstance(returns, _np.ndarray)
+    
+    # 如果是NumPy数组，将其转换为pandas Series以便后续处理
+    if is_numpy_array:
+        # 创建一个日期索引
+        dates = _pd.date_range(start='2020-01-01', periods=len(returns))
+        # 将NumPy数组转换为pandas Series
+        returns = _pd.Series(returns, index=dates, name=strategy_colname)
+    elif isinstance(returns, _pd.Series) and not isinstance(returns.index, _pd.DatetimeIndex):
+        # 如果是pandas Series但没有日期索引，为其创建一个日期索引
+        dates = _pd.date_range(start='2020-01-01', periods=len(returns))
+        # 保留原始数据，但使用新的日期索引
+        returns = _pd.Series(returns.values, index=dates, name=returns.name)
+
     if isinstance(returns, _pd.Series):
         returns.name = strategy_colname
     elif isinstance(returns, _pd.DataFrame):
@@ -90,6 +92,8 @@ def snapshot(
         returns.columns = strategy_colname
 
     colors = _GRAYSCALE_COLORS if grayscale else _FLATUI_COLORS
+    
+    # 处理returns数据
     returns = _utils.make_portfolio(returns.dropna(), 1, mode).pct_change().fillna(0)
 
     if figsize is None:
@@ -126,27 +130,39 @@ def snapshot(
     fig.set_facecolor("white")
 
     if subtitle:
+        # 检查是否为日期索引
+        has_date_index = isinstance(returns.index, _pd.DatetimeIndex)
+        
         if isinstance(returns, _pd.Series):
-            axes[0].set_title(
-                "%s - %s ;  Sharpe: %.2f                      \n"
-                % (
+            if has_date_index:
+                # 如果是日期索引，使用日期格式化
+                date_str = "%s - %s ;  Sharpe: %.2f                      \n" % (
                     returns.index.date[:1][0].strftime("%e %b '%y"),
                     returns.index.date[-1:][0].strftime("%e %b '%y"),
                     _stats.sharpe(returns),
-                ),
-                fontsize=12,
-                color="gray",
-            )
+                )
+            else:
+                # 如果不是日期索引，使用索引值
+                date_str = "Index %s - %s ;  Sharpe: %.2f                      \n" % (
+                    returns.index[0],
+                    returns.index[-1],
+                    _stats.sharpe(returns),
+                )
+            axes[0].set_title(date_str, fontsize=12, color="gray")
         elif isinstance(returns, _pd.DataFrame):
-            axes[0].set_title(
-                "\n%s - %s ;  "
-                % (
+            if has_date_index:
+                # 如果是日期索引，使用日期格式化
+                date_str = "\n%s - %s ;  " % (
                     returns.index.date[:1][0].strftime("%e %b '%y"),
                     returns.index.date[-1:][0].strftime("%e %b '%y"),
-                ),
-                fontsize=12,
-                color="gray",
-            )
+                )
+            else:
+                # 如果不是日期索引，使用索引值
+                date_str = "\nIndex %s - %s ;  " % (
+                    returns.index[0],
+                    returns.index[-1],
+                )
+            axes[0].set_title(date_str, fontsize=12, color="gray")
 
     axes[0].set_ylabel(
         "Cumulative Return", fontname=fontname, fontweight="bold", fontsize=12
@@ -219,24 +235,64 @@ def snapshot(
     axes[2].set_yscale("symlog" if log_scale else "linear")
     # axes[2].legend(fontsize=12)
 
-    retmax = _utils._round_to_closest(returns.max() * 100, 5)
-    retmin = _utils._round_to_closest(returns.min() * 100, 5)
+    # 计算最大值和最小值，确保它们是有限的
+    max_val = returns.max() * 100
+    min_val = returns.min() * 100
+    
+    # 处理无穷大和NaN值
+    if _np.isinf(max_val) or _np.isnan(max_val):
+        max_val = 10  # 默认值
+    if _np.isinf(min_val) or _np.isnan(min_val):
+        min_val = -10  # 默认值
+    
+    retmax = _utils._round_to_closest(max_val, 5)
+    retmin = _utils._round_to_closest(min_val, 5)
     retdiff = retmax - retmin
+    
+    # 确保retdiff是有限的
+    if _np.isinf(retdiff) or _np.isnan(retdiff) or retdiff <= 0:
+        retdiff = 20  # 默认值
+        retmax = 10
+        retmin = -10
+    
     steps = 5
     if retdiff > 50:
         steps = retdiff / 5
     elif retdiff > 30:
         steps = retdiff / 4
+    
     steps = _utils._round_to_closest(steps, 5)
-    axes[2].set_yticks(_np.arange(retmin, retmax, step=steps))
+    
+    # 确保steps是有限的且大于0
+    if _np.isinf(steps) or _np.isnan(steps) or steps <= 0:
+        steps = 5  # 默认值
+    
+    # 创建刻度
+    try:
+        axes[2].set_yticks(_np.arange(retmin, retmax, step=steps))
+    except ValueError:
+        # 如果仍然出错，使用默认刻度
+        axes[2].set_yticks(_np.arange(-10, 10, step=5))
 
     for ax in axes:
         ax.set_facecolor("white")
         ax.yaxis.set_label_coords(-0.1, 0.5)
         ax.yaxis.set_major_formatter(_StrMethodFormatter("{x:,.0f}%"))
+        
+        # 检查索引类型，如果不是DatetimeIndex，将x轴标签转换为字符串
+        if not isinstance(returns.index, _pd.DatetimeIndex):
+            # 获取当前刻度位置和标签
+            locs = ax.get_xticks()
+            labels = [str(int(loc)) if loc.is_integer() else str(loc) for loc in locs]
+            # 设置新的刻度标签
+            ax.set_xticks(locs)
+            ax.set_xticklabels(labels)
 
     _plt.subplots_adjust(hspace=0, bottom=0, top=1)
-    fig.autofmt_xdate()
+    
+    # 只有在使用日期索引时才自动格式化日期
+    if isinstance(returns.index, _pd.DatetimeIndex):
+        fig.autofmt_xdate()
 
     try:
         _plt.subplots_adjust(hspace=0)

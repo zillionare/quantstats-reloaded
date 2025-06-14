@@ -84,6 +84,15 @@ def html(
     if match_dates:
         returns = returns.dropna()
     returns = _utils._prepare_returns(returns)
+    
+    # 确保returns有一个日期索引
+    if not isinstance(returns.index, _pd.DatetimeIndex):
+        # 创建一个日期索引
+        date_index = _pd.date_range(start='2000-01-01', periods=len(returns))
+        if isinstance(returns, _pd.Series):
+            returns = _pd.Series(returns.values, index=date_index, name=returns.name)
+        elif isinstance(returns, _pd.DataFrame):
+            returns = _pd.DataFrame(returns.values, index=date_index, columns=returns.columns)
 
     strategy_title = kwargs.get("strategy_title", "Strategy")
     if isinstance(returns, _pd.DataFrame):
@@ -99,6 +108,10 @@ def html(
                 benchmark_title = benchmark.name
             elif isinstance(benchmark, _pd.DataFrame):
                 benchmark_title = benchmark[benchmark.columns[0]].name
+        
+        # 确保benchmark_title不为None
+        if benchmark_title is None:
+            benchmark_title = "Benchmark"
 
         tpl = tpl.replace(
             "{{benchmark_title}}", f"Benchmark is {benchmark_title.upper()} | "
@@ -108,6 +121,7 @@ def html(
             returns, benchmark = _match_dates(returns, benchmark)
     else:
         benchmark_title = None
+        tpl = tpl.replace("{{benchmark_title}}", "")
 
     date_range = returns.index.strftime("%e %b, %Y")
     tpl = tpl.replace("{{date_range}}", date_range[0] + " - " + date_range[-1])
@@ -506,6 +520,15 @@ def full(
     if match_dates:
         returns = returns.dropna()
     returns = _utils._prepare_returns(returns)
+    
+    # 确保returns有一个日期索引
+    if not isinstance(returns.index, _pd.DatetimeIndex):
+        # 创建一个日期索引
+        date_index = _pd.date_range(start='2000-01-01', periods=len(returns))
+        if isinstance(returns, _pd.Series):
+            returns = _pd.Series(returns.values, index=date_index, name=returns.name)
+        elif isinstance(returns, _pd.DataFrame):
+            returns = _pd.DataFrame(returns.values, index=date_index, columns=returns.columns)
     if benchmark is not None:
         benchmark = _utils._prepare_benchmark(benchmark, returns.index, rf)
         if match_dates is True:
@@ -656,6 +679,15 @@ def basic(
     if match_dates:
         returns = returns.dropna()
     returns = _utils._prepare_returns(returns)
+    
+    # 确保returns有一个日期索引
+    if not isinstance(returns.index, _pd.DatetimeIndex):
+        # 创建一个日期索引
+        date_index = _pd.date_range(start='2000-01-01', periods=len(returns))
+        if isinstance(returns, _pd.Series):
+            returns = _pd.Series(returns.values, index=date_index, name=returns.name)
+        elif isinstance(returns, _pd.DataFrame):
+            returns = _pd.DataFrame(returns.values, index=date_index, columns=returns.columns)
     if benchmark is not None:
         benchmark = _utils._prepare_benchmark(benchmark, returns.index, rf)
         if match_dates is True:
@@ -765,6 +797,13 @@ def metrics(
     if prepare_returns:
         df = _utils._prepare_returns(returns)
 
+    # 初始化变量
+    blank = ["", ""]
+    s_start = {}
+    s_end = {}
+    s_rf = {}
+    df_strategy_columns = []
+    
     if isinstance(returns, _pd.Series):
         df = _pd.DataFrame({"returns": returns})
     elif isinstance(returns, _pd.DataFrame):
@@ -866,6 +905,10 @@ def metrics(
     metrics["Longest DD Days"] = blank
 
     if mode.lower() == "full":
+        # 初始化ret_vol变量
+        ret_vol = None
+        bench_vol = None
+        
         if isinstance(returns, _pd.Series):
             ret_vol = (
                 _stats.volatility(df["returns"], win_year, True, prepare_returns=False)
