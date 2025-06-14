@@ -21,9 +21,10 @@ import io as _io
 import datetime as _dt
 import pandas as _pd
 import numpy as _np
-import yfinance as _yf
+# import yfinance as _yf - 在中国大陆无法使用
 from . import stats as _stats
 import inspect
+import warnings
 
 
 def _mtd(df):
@@ -254,20 +255,23 @@ def _prepare_returns(data, rf=0.0, nperiods=None):
 
 
 def download_returns(ticker, period="max", proxy=None):
-    params = {
-        "tickers": ticker,
-        "proxy": proxy,
-        "auto_adjust": True,
-        "multi_level_index": False,
-        "progress": False,
-    }
+    warnings.warn(
+        "yfinance在中国大陆无法使用。请手动提供数据或使用其他数据源。"
+        "\n您可以通过以下方式提供数据："
+        "\n1. 使用本地CSV文件加载数据"
+        "\n2. 使用其他可用的数据API"
+        "\n3. 手动创建pandas.Series或DataFrame对象",
+        UserWarning
+    )
+    
+    # 返回空的Series，用户需要自行提供数据
     if isinstance(period, _pd.DatetimeIndex):
-        params["start"] = period[0]
+        index = period
     else:
-        params["period"] = period
-    df = _yf.download(**params)["Close"].pct_change()
-    df = df.tz_localize(None)
-    return df
+        # 创建一个默认的日期范围
+        index = _pd.date_range(start='2000-01-01', periods=10, freq='D')
+    
+    return _pd.Series(index=index, dtype=float, name=ticker)
 
 
 def _prepare_benchmark(benchmark=None, period="max", rf=0.0, prepare_returns=True):
@@ -276,12 +280,27 @@ def _prepare_benchmark(benchmark=None, period="max", rf=0.0, prepare_returns=Tru
     _prepare_returns()
 
     period can be options or (expected) _pd.DatetimeIndex range
+    
+    由于在中国大陆无法使用yfinance，如果benchmark是字符串，将返回警告并创建空的Series。
+    请直接提供benchmark数据作为Series或DataFrame。
     """
     if benchmark is None:
         return None
 
     if isinstance(benchmark, str):
-        benchmark = download_returns(benchmark)
+        warnings.warn(
+            f"由于在中国大陆无法使用yfinance，无法下载{benchmark}的数据。"
+            "\n请直接提供benchmark数据作为Series或DataFrame。",
+            UserWarning
+        )
+        # 创建一个空的Series作为占位符
+        if isinstance(period, _pd.DatetimeIndex):
+            index = period
+        else:
+            # 创建一个默认的日期范围
+            index = _pd.date_range(start='2000-01-01', periods=10, freq='D')
+        
+        benchmark = _pd.Series(index=index, dtype=float, name=benchmark)
 
     elif isinstance(benchmark, _pd.DataFrame):
         benchmark = benchmark[benchmark.columns[0]].copy()
@@ -371,17 +390,15 @@ def make_index(
     """
     Makes an index out of the given tickers and weights.
     Optionally you can pass a dataframe with the returns.
-    If returns is not given it try to download them with yfinance
+    
+    由于在中国大陆无法使用yfinance，您必须提供returns参数。
 
     Args:
         * ticker_weights (Dict): A python dict with tickers as keys
             and weights as values
         * rebalance: Pandas resample interval or None for never
         * period: time period of the returns to be downloaded
-        * returns (Series, DataFrame): Optional. Returns If provided,
-            it will fist check if returns for the given ticker are in
-            this dataframe, if not it will try to download them with
-            yfinance
+        * returns (Series, DataFrame): Required. Returns dataframe with tickers as columns
     Returns:
         * index_returns (Series, DataFrame): Returns for the index
     """
@@ -389,11 +406,36 @@ def make_index(
     index = None
     portfolio = {}
 
+    if returns is None:
+        warnings.warn(
+            "由于在中国大陆无法使用yfinance，您必须提供returns参数。"
+            "\n请提供一个包含所有需要的ticker数据的DataFrame。",
+            UserWarning
+        )
+        # 创建一个空的DataFrame作为占位符
+        if isinstance(period, _pd.DatetimeIndex):
+            index = period
+        else:
+            # 创建一个默认的日期范围
+            index = _pd.date_range(start='2000-01-01', periods=10, freq='D')
+        
+        # 为每个ticker创建空列
+        empty_df = _pd.DataFrame(index=index)
+        for ticker in ticker_weights.keys():
+            empty_df[ticker] = float('nan')
+        
+        return empty_df.sum(axis=1)  # 返回全是NaN的Series
+
     # Iterate over weights
     for ticker in ticker_weights.keys():
-        if (returns is None) or (ticker not in returns.columns):
-            # Download the returns for this ticker, e.g. GOOG
-            ticker_returns = download_returns(ticker, period)
+        if ticker not in returns.columns:
+            warnings.warn(
+                f"Ticker {ticker} 不在提供的returns DataFrame中。"
+                "请确保您的returns DataFrame包含所有需要的ticker数据。",
+                UserWarning
+            )
+            # 创建一个空的Series作为占位符
+            ticker_returns = _pd.Series(index=returns.index, dtype=float, name=ticker)
         else:
             ticker_returns = returns[ticker]
 

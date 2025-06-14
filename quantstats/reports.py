@@ -68,7 +68,10 @@ def html(
 ):
 
     if output is None and not _utils._in_notebook():
-        raise ValueError("`output` must be specified")
+        import tempfile
+        output = tempfile.mktemp(suffix='.html')
+        print(f"Not in notebook environment. Saving output to temporary file: {output}")
+        # 不抛出错误，而是使用临时文件
 
     if match_dates:
         returns = returns.dropna()
@@ -495,8 +498,8 @@ def html(
     tpl = tpl.replace("white-space:pre;", "")
 
     if output is None:
-        # _open_html(tpl)
-        _download_html(tpl, download_filename)
+        _open_html(tpl)
+        # _download_html(tpl, download_filename)
         return
 
     with open(output, "w", encoding="utf-8") as f:

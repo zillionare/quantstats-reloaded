@@ -1,0 +1,57 @@
+[tool.poetry]
+name = "QuantStats-reloaded"
+version = "0.0.63"
+description = "Portfolio analytics for quants"
+authors = ["Aaron Yang <aaron_yang@jieyu.ai>"]
+license = "Apache Software License"
+readme = "README.rst"
+repository = "https://github.com/zillionare/quantstats-reloaded"
+keywords = ["quant", "algotrading", "algorithmic-trading", "quantitative-trading", "quantitative-analysis", "algo-trading", "visualization", "plotting"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+]
+packages = [{include = "quantstats"}]
+include = [
+    "LICENSE.txt",
+    "quantstats/report.html",
+    "README_CN.md",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = ">=0.24.0"
+numpy = ">=1.16.5"
+seaborn = ">=0.9.0"
+matplotlib = ">=3.0.0"
+scipy = ">=1.2.0"
+tabulate = ">=0.8.0"
+python-dateutil = ">=2.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0.0"
+
+[[tool.poetry.source]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = false
+secondary = false
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
