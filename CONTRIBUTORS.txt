@@ -2,3 +2,4 @@
 # to the public version of QuantStats.
 
 Ran Aroussi, Creator <https://github.com/ranaroussi>
+Aaron Yang, Creator of fork <https://github.com/zillionare>
