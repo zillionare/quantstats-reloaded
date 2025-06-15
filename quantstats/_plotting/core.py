@@ -510,7 +510,6 @@ def plot_histogram(
         )
 
     else:
-        # 确保combined_returns在所有情况下都被定义
         if isinstance(returns, _pd.Series):
             combined_returns = returns.copy()
             if kde:

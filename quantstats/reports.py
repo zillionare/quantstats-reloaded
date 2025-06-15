@@ -68,10 +68,7 @@ def html(
 ):
 
     if output is None and not _utils._in_notebook():
-        import tempfile
-        output = tempfile.mktemp(suffix='.html')
-        print(f"Not in notebook environment. Saving output to temporary file: {output}")
-        # 不抛出错误，而是使用临时文件
+        raise ValueError("`output` must be specified")
 
     if match_dates:
         returns = returns.dropna()
@@ -498,8 +495,8 @@ def html(
     tpl = tpl.replace("white-space:pre;", "")
 
     if output is None:
-        _open_html(tpl)
-        # _download_html(tpl, download_filename)
+        # _open_html(tpl)
+        _download_html(tpl, download_filename)
         return
 
     with open(output, "w", encoding="utf-8") as f:
@@ -908,10 +905,6 @@ def metrics(
     metrics["Longest DD Days"] = blank
 
     if mode.lower() == "full":
-        # 初始化ret_vol变量
-        ret_vol = None
-        bench_vol = None
-        
         if isinstance(returns, _pd.Series):
             ret_vol = (
                 _stats.volatility(df["returns"], win_year, True, prepare_returns=False)

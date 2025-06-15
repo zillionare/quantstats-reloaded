@@ -13,15 +13,14 @@ matrix:
       sudo: true
 
 install:
-  - pip install Cython
-  - pip install -r requirements.txt
-  - pip install .
+  - pip install poetry
+  - poetry install
 
 script:
-  - nosetests
+  - poetry run pytest --cov=quantstats
 
 after_success:
-  - coveralls
+  - poetry run coveralls
 
 branches:
   only:

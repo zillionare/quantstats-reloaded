@@ -73,11 +73,6 @@ def snapshot(returns, grayscale=False, figsize=None, title="Portfolio Performanc
         dates = _pd.date_range(start='2020-01-01', periods=len(returns))
         # 将NumPy数组转换为pandas Series
         returns = _pd.Series(returns, index=dates, name=strategy_colname)
-    elif isinstance(returns, _pd.Series) and not isinstance(returns.index, _pd.DatetimeIndex):
-        # 如果是pandas Series但没有日期索引，为其创建一个日期索引
-        dates = _pd.date_range(start='2020-01-01', periods=len(returns))
-        # 保留原始数据，但使用新的日期索引
-        returns = _pd.Series(returns.values, index=dates, name=returns.name)
 
     if isinstance(returns, _pd.Series):
         returns.name = strategy_colname
