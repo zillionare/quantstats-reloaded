@@ -29,6 +29,7 @@ from . import __version__, stats as _stats, utils as _utils, plots as _plots
 from dateutil.relativedelta import relativedelta
 from io import StringIO
 
+
 try:
     from IPython.display import display as iDisplay, HTML as iHTML
 except ImportError:

@@ -11,6 +11,6 @@ dist
 quantstats.egg-info
 QuantStats.egg-info
 Icon
-/tests
+# 移除/tests行，以便git可以跟踪tests目录下的文件更改
 .vscode
 Icon

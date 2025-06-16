@@ -1,0 +1,1 @@
+# QuantStats tests package

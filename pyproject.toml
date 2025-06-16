@@ -1,10 +1,10 @@
 [tool.poetry]
 name = "QuantStats-reloaded"
-version = "0.0.63"
+version = "0.1.0"
 description = "Portfolio analytics for quants"
 authors = ["Aaron Yang <aaron_yang@jieyu.ai>"]
 license = "Apache Software License"
-readme = "README.rst"
+readme = "README.md"
 repository = "https://github.com/zillionare/quantstats-reloaded"
 keywords = ["quant", "algotrading", "algorithmic-trading", "quantitative-trading", "quantitative-analysis", "algo-trading", "visualization", "plotting"]
 classifiers = [
@@ -29,7 +29,6 @@ packages = [{include = "quantstats"}]
 include = [
     "LICENSE.txt",
     "quantstats/report.html",
-    "README_CN.md",
 ]
 
 [tool.poetry.dependencies]
@@ -48,7 +47,7 @@ pytest-cov = "^4.1.0"
 flake8 = "^6.1.0"
 black = "^23.11.0"
 tox = "^4.11.3"
-tox-poetry = "^0.5.0"
+empyrical-reloaded = "^0.5.10"
 
 
 
