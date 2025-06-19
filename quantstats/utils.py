@@ -94,10 +94,14 @@ def to_log_returns(returns, rf=0.0, nperiods=None):
 def exponential_stdev(returns, window=30, is_halflife=False):
     """Returns series representing exponential volatility of returns"""
     returns = _prepare_returns(returns)
-    halflife = window if is_halflife else None
-    return returns.ewm(
-        com=None, span=window, halflife=halflife, min_periods=window
-    ).std()
+    if is_halflife:
+        return returns.ewm(
+            halflife=window, min_periods=window
+        ).std()
+    else:
+        return returns.ewm(
+            span=window, min_periods=window
+        ).std()
 
 
 def rebase(prices, base=100.0):
@@ -137,10 +141,10 @@ def aggregate_returns(returns, period=None, compounded=True):
         return group_returns(returns, index.year, compounded=compounded)
 
     if "week" in period:
-        return group_returns(returns, index.week, compounded=compounded)
+        return group_returns(returns, index.isocalendar().week, compounded=compounded)
 
     if "eow" in period or period == "W":
-        return group_returns(returns, [index.year, index.week], compounded=compounded)
+        return group_returns(returns, [index.year, index.isocalendar().week], compounded=compounded)
 
     if "eom" in period or period == "ME":
         return group_returns(returns, [index.year, index.month], compounded=compounded)
@@ -253,19 +257,97 @@ def _prepare_returns(data, rf=0.0, nperiods=None):
     return data
 
 
-def download_returns(ticker, period="max", proxy=None):
+def download_returns(ticker, period="max", proxy=None, fallback_to_synthetic=True):
     """
-    生成合成的股票收益率数据，替代从yfinance下载数据
-    
+    Downloads stock returns data using yfinance, with fallback to synthetic data
+
     Args:
-        * ticker (str): 股票代码
-        * period (str, pd.DatetimeIndex): 时间周期或日期范围
-        * proxy (str): 代理服务器，此参数保留但不使用
-    
+        * ticker (str): Stock ticker symbol
+        * period (str, pd.DatetimeIndex): Time period or date range
+        * proxy (str): Proxy server (optional)
+        * fallback_to_synthetic (bool): Whether to fallback to synthetic data if yfinance fails
+
     Returns:
-        * pd.Series: 合成的股票收益率数据
+        * pd.Series: Stock returns data
     """
-    # 设置随机种子，使相同ticker生成相同的数据
+    try:
+        import yfinance as yf
+
+        # Try to download real data using yfinance
+        if isinstance(period, _pd.DatetimeIndex):
+            # If period is a DatetimeIndex, use start and end dates
+            start_date = period[0].strftime('%Y-%m-%d')
+            end_date = period[-1].strftime('%Y-%m-%d')
+
+            # Download data
+            data = yf.download(ticker, start=start_date, end=end_date,
+                             proxy=proxy, progress=False)
+        else:
+            # Use period string directly
+            data = yf.download(ticker, period=period,
+                             proxy=proxy, progress=False)
+
+        if not data.empty:
+            # Handle multi-level columns (when downloading single ticker)
+            if isinstance(data.columns, _pd.MultiIndex):
+                # Extract the price column for the ticker
+                if ('Adj Close', ticker) in data.columns:
+                    prices = data[('Adj Close', ticker)]
+                elif ('Close', ticker) in data.columns:
+                    prices = data[('Close', ticker)]
+                else:
+                    # Try to get the first available price column
+                    price_cols = [col for col in data.columns if col[0] in ['Adj Close', 'Close']]
+                    if price_cols:
+                        prices = data[price_cols[0]]
+                    else:
+                        raise ValueError(f"No price data found for {ticker}")
+            else:
+                # Handle single-level columns
+                if 'Adj Close' in data.columns:
+                    prices = data['Adj Close']
+                elif 'Close' in data.columns:
+                    prices = data['Close']
+                else:
+                    raise ValueError(f"No price data found for {ticker}")
+
+            # Calculate returns from prices
+            returns = prices.pct_change().dropna()
+            returns.name = ticker
+            return returns
+        else:
+            # If download failed or no data, fallback to synthetic
+            if fallback_to_synthetic:
+                return _generate_synthetic_returns(ticker, period)
+            else:
+                raise ValueError(f"No data available for ticker {ticker}")
+
+    except ImportError:
+        # yfinance not available, fallback to synthetic data
+        if fallback_to_synthetic:
+            return _generate_synthetic_returns(ticker, period)
+        else:
+            raise ImportError("yfinance is required for downloading real data")
+    except Exception as e:
+        # Any other error, fallback to synthetic data if enabled
+        if fallback_to_synthetic:
+            return _generate_synthetic_returns(ticker, period)
+        else:
+            raise e
+
+
+def _generate_synthetic_returns(ticker, period="max"):
+    """
+    Generate synthetic stock returns data as fallback
+
+    Args:
+        * ticker (str): Stock ticker symbol
+        * period (str, pd.DatetimeIndex): Time period or date range
+
+    Returns:
+        * pd.Series: Synthetic stock returns data
+    """
+    # Set random seed to make same ticker generate same data
     random.seed(hash(ticker) % 10000)
     
     # 根据period参数确定日期范围

@@ -784,11 +784,8 @@ def metrics(
 
     if isinstance(returns, _pd.DataFrame):
         if len(returns.columns) > 1:
-            blank = [""] * len(returns.columns)
             if isinstance(strategy_colname, str):
                 strategy_colname = list(returns.columns)
-    else:
-        blank = [""]
 
     # if isinstance(returns, _pd.DataFrame):
     #     if len(returns.columns) > 1:
@@ -799,12 +796,11 @@ def metrics(
         df = _utils._prepare_returns(returns)
 
     # 初始化变量
-    blank = ["", ""]
     s_start = {}
     s_end = {}
     s_rf = {}
     df_strategy_columns = []
-    
+
     if isinstance(returns, _pd.Series):
         df = _pd.DataFrame({"returns": returns})
     elif isinstance(returns, _pd.DataFrame):
@@ -821,10 +817,8 @@ def metrics(
             returns, benchmark = _match_dates(returns, benchmark)
         df["benchmark"] = benchmark
         if isinstance(returns, _pd.Series):
-            blank = ["", ""]
             df["returns"] = returns
         elif isinstance(returns, _pd.DataFrame):
-            blank = [""] * len(returns.columns) + [""]
             for i, strategy_col in enumerate(returns.columns):
                 df["returns_" + str(i + 1)] = returns[strategy_col]
 
@@ -869,6 +863,8 @@ def metrics(
     metrics["Risk-Free Rate %"] = _pd.Series(s_rf) * 100
     metrics["Time in Market %"] = _stats.exposure(df, prepare_returns=False) * pct
 
+    # 动态计算blank的长度以匹配metrics的行数
+    blank = [""] * len(metrics)
     metrics["~"] = blank
 
     if compounded:
