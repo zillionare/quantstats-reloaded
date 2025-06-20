@@ -1,16 +1,18 @@
 [![Python version](https://img.shields.io/badge/python-3.10+-blue.svg?style=flat)](https://pypi.python.org/pypi/quantstats-reloaded)
-[![PyPi version](https://img.shields.io/pypi/v/quantstats.svg?maxAge=60)](https://pypi.python.org/pypi/quantstats-reloaded)
+[![PyPi version](https://img.shields.io/pypi/v/quantstats-reloaded.svg?maxAge=60)](https://pypi.python.org/pypi/quantstats-reloaded)
 [![PyPi status](https://img.shields.io/pypi/status/quantstats-reloaded.svg?maxAge=60)](https://pypi.python.org/pypi/quantstats)
-[![PyPi downloads](https://img.shields.io/pypi/dm/quantstat/quantstats-reloaded.svg?maxAge=2592000&label=installs&color=%2327B1FF)](https://pypi.python.org/pypi/quantstats)
-[![CodeFactor](https://www.codefactor.io/repository/github/zillionare/quantstats-reloaded/badge)](https://www.codefactor.io/repository/github/zillionare/quantstats-reloaded)
+[![PyPi downloads](https://img.shields.io/pypi/zillionare/quantstat-reloaded/quantstats-reloaded.svg?maxAge=2592000&label=installs&color=%2327B1FF)](https://pypi.python.org/pypi/quantstats)
 [![Star this repo](https://img.shields.io/github/stars/zillionare/quantstats-reloaded.svg?style=social&label=Star&maxAge=60)](https://github.com/zillionare/quantstats-reloaded)
 
+[English](README.md)  [中文](README_zh.md)
 
 # QuantStats: Portfolio analytics for quants
 
 **QuantStats** Python library that performs portfolio profiling, allowing quants and portfolio managers to understand their performance better by providing them with in-depth analytics and risk metrics.
 
 This is a fork of [ranaroussi's quantstats project](https://github.com/ranaroussi/quantstats). Besides fixing bugs in the original project more promptly, we will proactively update the version to ensure compatibility with newer Python versions and commonly used Python libraries. We also achieve more rigorous dependency management via Poetry.
+
+During the porting process, we compared the running results of the original version 0.0.64 with those obtained by using methods similar to empyrical to ensure the correctness of the porting. Currently, the unit test coverage has reached 71%, and the unit test coverage of the core module stats.py has reached 91%.
 
 [Changelog »](./CHANGELOG.md)
 
@@ -203,7 +205,7 @@ $ pip install quantstats-reloaded --upgrade --no-cache-dir
 ## Known Issues
 
 1. "For some reason, I couldn't find a way to tell seaborn not to return the monthly returns heatmap when instructed to save - so even if you save the plot (by passing `savefig={...}`) it will still show the plot." - this is a known issue of Ranaroussi's Quantstats library.
-2. We dropped support for YFinance, since the author (live in Chinese mainland) has no env to test it. 
+
 
 ## Legal Stuff
 
@@ -211,5 +213,6 @@ $ pip install quantstats-reloaded --upgrade --no-cache-dir
 
 ## P.S.
 
-Ranaroussi's Quantstats is a highly favored strategy metric evaluation library among quants, boasting over 5k stars on GitHub. However, it has been more than eight months since its last release, and several critical bugs remain unresolved, rendering some fundamental functions inoperable (e.g., Issue 416 makes most calculations impossible under Python 3.12).
+Ranaroussi's Quantstats is a highly favored strategy metric evaluation library among quants, boasting over 5k stars on GitHub. However, it has been more than eight months since its last release, and several critical bugs remain unresolved, rendering some fundamental functions inoperable (e.g., Issue 416 makes we cannot import quantstats in Python 3.12).
+
 Given that we've consistently recommended this library to students in our quantitative trading courses, we feel obliged to contribute to its maintenance and ensure timely releases of updated versions.
