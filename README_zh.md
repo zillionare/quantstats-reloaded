@@ -72,12 +72,9 @@ qs.reports.full(stock, benchmark, output="/tmp/report.html")
 
 输出将生成类似以下内容：
 
-
-
 ![first part](docs/basic.jpg)
 
 ![second part](docs/drawdown.jpg)
-
 
 要查看可用方法的完整列表，请运行
 ```python
@@ -168,7 +165,6 @@ qs.reports.full(stock, benchmark, output="/tmp/report.html")
  'yearly_returns']
 ```
 
-
 同时，您可以使用 Python 的 help 方法获取每个方法的可选参数信息：
 ```python
 help(qs.stats.conditional_value_at_risk)
@@ -200,3 +196,9 @@ QuantStats 按照 Apache 软件许可证 分发。有关详细信息，请参阅
 Ranaroussi 的 Quantstats 是量化分析师中非常受欢迎的策略指标评估库，在 GitHub 上拥有超过 5k 星标。然而，自上次发布以来已经超过八个月，几个关键 bug 仍未解决，导致某些基本功能无法使用（例如 Issue 416 使得在 Python 3.12 下无法导入）。
 
 鉴于我们在量化交易课程中一直向学生推荐这个库，我们觉得有责任为其维护做出贡献，并确保及时发布更新版本。
+
+我们对 quantstas-reloaded 与 quantstats 0.0.67 中的 stats.py 的功能进行了完整的对照，单元测试覆盖率达到 91%。
+
+这就保证了 quantstats-reloaded 与原 quantstats在关键指标上是完全一致的。
+
+其它部分都已通过功能性测试，但部分单元测试由AI生成，不够准确。我们将在后续版本中，完善这些单元测试。

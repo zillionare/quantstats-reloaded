@@ -8,6 +8,8 @@
 - Fixed:
   - [ZMQInteractiveShell object has no attribute 'magic'](https://github.com/ranaroussi/quantstats/issues/416)
   - [Invalide frequency: ME](https://github.com/ranaroussi/quantstats/issues/411)
+- A complete comparison of the functionality in stats.py between quantstats-reloaded and quantstats 0.0.67 has been conducted, with the unit test coverage reaching 91%.
+
 ## 0.0.62
 - Changed `serenity_index` and `recovery_factor` to use simple sum instead of compounded sum
 - Reports passing the `compounded` param to all supporting methods
